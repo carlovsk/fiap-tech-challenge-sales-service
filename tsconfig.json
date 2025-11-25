@@ -29,8 +29,10 @@
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "noEmit": true,
+    "allowImportingTsExtensions": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", ".dist", "jest.config.js"]
+  "exclude": ["node_modules", ".dist", "vitest.config.ts"]
 }
