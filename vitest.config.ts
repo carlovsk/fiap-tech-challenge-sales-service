@@ -21,6 +21,7 @@ export default defineConfig({
         'coverage/**',
         'node_modules/**',
         'src/routes/**',
+        'k6/**',
       ],
       thresholds: {
         lines: 80,

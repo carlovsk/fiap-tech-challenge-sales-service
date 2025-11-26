@@ -1,0 +1,53 @@
+# Vehicle Sales Service - Integration Test Environment
+# This docker-compose file sets up the Express server and PostgreSQL for integration testing
+
+services:
+  # PostgreSQL Database for Testing
+  postgres-test:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: vehiclesalesdb_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vehiclesalesdb_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  # Express Server (Vehicle Sales Service)
+  app:
+    image: node:22-alpine
+    working_dir: /app
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=test
+      - PORT=3001
+      - DATABASE_URL=postgresql://postgres:postgres@postgres-test:5432/vehiclesalesdb_test?schema=public&sslmode=disable
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: sh -c "npm install && npx prisma generate && npx prisma migrate deploy && npm run dev"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+# Network for service communication
+networks:
+  test-network:
+    driver: bridge
+
