@@ -53,4 +53,3 @@ describe('HealthController', () => {
     ).resolves.not.toThrow();
   });
 });
-
