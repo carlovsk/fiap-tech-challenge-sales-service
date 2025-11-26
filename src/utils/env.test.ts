@@ -18,22 +18,25 @@ describe('env', () => {
       ...originalEnv,
       PORT: '3000',
       NODE_ENV: 'development',
+      MANAGEMENT_SERVICE_URL: 'http://localhost:3001',
     };
 
-    const { env } = await import('./env');
+    const { env } = await import('./env.ts');
 
     expect(env.PORT).toBe(3000);
     expect(env.NODE_ENV).toBe('development');
+    expect(env.MANAGEMENT_SERVICE_URL).toBe('http://localhost:3001');
   });
 
   it('should default NODE_ENV to development when not provided', async () => {
     process.env = {
       ...originalEnv,
       PORT: '3000',
+      MANAGEMENT_SERVICE_URL: 'http://localhost:3001',
     };
     delete process.env.NODE_ENV;
 
-    const { env } = await import('./env');
+    const { env } = await import('./env.ts');
 
     expect(env.NODE_ENV).toBe('development');
   });
@@ -43,9 +46,10 @@ describe('env', () => {
       ...originalEnv,
       PORT: '8080',
       NODE_ENV: 'test',
+      MANAGEMENT_SERVICE_URL: 'http://localhost:3001',
     };
 
-    const { env } = await import('./env');
+    const { env } = await import('./env.ts');
 
     expect(env.PORT).toBe(8080);
     expect(typeof env.PORT).toBe('number');
@@ -60,7 +64,7 @@ describe('env', () => {
 
     await expect(async () => {
       vi.resetModules();
-      await import('./env');
+      await import('./env.ts');
     }).rejects.toThrow();
 
     // Restore env
@@ -72,10 +76,11 @@ describe('env', () => {
       ...originalEnv,
       PORT: 'invalid',
       NODE_ENV: 'test',
+      MANAGEMENT_SERVICE_URL: 'http://localhost:3001',
     };
 
     await expect(async () => {
-      await import('./env');
+      await import('./env.ts');
     }).rejects.toThrow();
   });
 
@@ -87,11 +92,25 @@ describe('env', () => {
         ...originalEnv,
         PORT: '3000',
         NODE_ENV: envValue,
+        MANAGEMENT_SERVICE_URL: 'http://localhost:3001',
       };
 
       vi.resetModules();
-      const { env } = await import('./env');
+      const { env } = await import('./env.ts');
       expect(env.NODE_ENV).toBe(envValue);
     }
+  });
+
+  it('should throw error when MANAGEMENT_SERVICE_URL is invalid', async () => {
+    process.env = {
+      ...originalEnv,
+      PORT: '3000',
+      NODE_ENV: 'test',
+      MANAGEMENT_SERVICE_URL: 'invalid-url',
+    };
+
+    await expect(async () => {
+      await import('./env.ts');
+    }).rejects.toThrow();
   });
 });
