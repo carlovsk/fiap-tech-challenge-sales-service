@@ -11,18 +11,45 @@ datasource db {
 }
 
 model Vehicle {
-  id        String      @id @default(uuid())
+  id        String        @id @default(uuid())
   brand     String
   model     String
   year      Int
   color     String
   price     Decimal
   status    VehicleStatus
-  syncedAt  DateTime    @default(now())
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  syncedAt  DateTime      @default(now())
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  sales     Sale[]
 
   @@map("vehicles")
+}
+
+model Sale {
+  id          String   @id @default(uuid())
+  vehicleId   String
+  buyerCpf    String
+  saleDate    DateTime
+  totalAmount Decimal
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id])
+  payment     Payment?
+
+  @@map("sales")
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  saleId      String        @unique
+  paymentCode String        @unique
+  status      PaymentStatus
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  sale        Sale          @relation(fields: [saleId], references: [id])
+
+  @@map("payments")
 }
 
 enum VehicleStatus {
@@ -30,5 +57,9 @@ enum VehicleStatus {
   SOLD
 }
 
-
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
 
