@@ -1,0 +1,54 @@
+# Vehicle Sales Service - Development Environment
+# This docker-compose file sets up the Express server and PostgreSQL database
+
+services:
+  # Express Server (Vehicle Sales Service)
+  app:
+    image: node:22-alpine
+    working_dir: /app
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/vehiclesalesdb?schema=public&sslmode=disable
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: vehiclesalesdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+# Volumes for persistent data
+volumes:
+  postgres_data:
+    driver: local
+
+# Network for service communication
+networks:
+  app-network:
+    driver: bridge
+
