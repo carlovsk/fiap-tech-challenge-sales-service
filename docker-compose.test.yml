@@ -30,6 +30,7 @@ services:
       - NODE_ENV=test
       - PORT=3001
       - DATABASE_URL=postgresql://postgres:postgres@postgres-test:5432/vehiclesalesdb_test?schema=public&sslmode=disable
+      - MANAGEMENT_SERVICE_URL=http://localhost:3000
     volumes:
       - .:/app
       - /app/node_modules

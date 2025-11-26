@@ -57,11 +57,12 @@ jobs:
       - name: Run k6 integration tests
         id: k6
         run: |
-          # Run k6 and capture output
+          set -o pipefail
+          # Run k6 and capture output, preserving exit code through pipe
           k6 run k6/integration-tests.js --out json=k6-results.json 2>&1 | tee k6-output.txt
-          
-          # Save exit code
-          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+          K6_EXIT_CODE=${PIPESTATUS[0]}
+          echo "exit_code=$K6_EXIT_CODE" >> $GITHUB_OUTPUT
+          exit $K6_EXIT_CODE
 
       - name: Parse k6 results
         id: parse
@@ -69,28 +70,36 @@ jobs:
         run: |
           # Extract check results from output
           if [ -f k6-output.txt ]; then
-            # Count passed and failed checks
-            CHECKS_PASSED=$(grep -oP '✓.*checks' k6-output.txt | grep -oP '\d+' | head -1 || echo "0")
-            CHECKS_FAILED=$(grep -oP '✗.*checks' k6-output.txt | grep -oP '\d+' | head -1 || echo "0")
-            
             # Extract individual test results
             HEALTH_CHECK=$(grep -q "Health check passed" k6-output.txt && echo "✅" || echo "❌")
             SYNC_CREATE=$(grep -q "Vehicle synced (created)" k6-output.txt && echo "✅" || echo "❌")
-            SYNC_UPDATE=$(grep -q "Vehicle synced (updated)" k6-output.txt && echo "✅" || echo "❌")
-            SYNC_STATUS=$(grep -q "Vehicle status synced to SOLD" k6-output.txt && echo "✅" || echo "❌")
-            VALIDATION_UUID=$(grep -q "Validation error correctly returned for invalid UUID" k6-output.txt && echo "✅" || echo "❌")
-            VALIDATION_FIELDS=$(grep -q "Validation error correctly returned for missing fields" k6-output.txt && echo "✅" || echo "❌")
+            GET_AVAILABLE=$(grep -q "Get available vehicles passed" k6-output.txt && echo "✅" || echo "❌")
+            GET_SOLD_BEFORE=$(grep -q "Get sold vehicles (before purchase) passed" k6-output.txt && echo "✅" || echo "❌")
+            PURCHASE=$(grep -q "Purchase completed with paymentCode" k6-output.txt && echo "✅" || echo "❌")
+            GET_AVAILABLE_AFTER=$(grep -q "Get available vehicles (after purchase) passed" k6-output.txt && echo "✅" || echo "❌")
+            GET_SOLD_AFTER=$(grep -q "Get sold vehicles (after purchase) passed" k6-output.txt && echo "✅" || echo "❌")
+            PAYMENT_CONFIRM=$(grep -q "Payment webhook (confirm) passed" k6-output.txt && echo "✅" || echo "❌")
+            PAYMENT_INVALID=$(grep -q "Payment webhook (invalid code) correctly returned 404" k6-output.txt && echo "✅" || echo "❌")
+            PURCHASE_NOT_FOUND=$(grep -q "Purchase (vehicle not found) correctly returned 404" k6-output.txt && echo "✅" || echo "❌")
+            PURCHASE_NOT_AVAILABLE=$(grep -q "Purchase (vehicle not available) correctly returned 400" k6-output.txt && echo "✅" || echo "❌")
+            PURCHASE_VALIDATION=$(grep -q "Purchase (validation error) correctly returned 400" k6-output.txt && echo "✅" || echo "❌")
+            SYNC_VALIDATION=$(grep -q "Sync validation error correctly returned 400" k6-output.txt && echo "✅" || echo "❌")
             ALL_PASSED=$(grep -q "All integration tests passed" k6-output.txt && echo "true" || echo "false")
             
             # Save to outputs
-            echo "checks_passed=$CHECKS_PASSED" >> $GITHUB_OUTPUT
-            echo "checks_failed=$CHECKS_FAILED" >> $GITHUB_OUTPUT
             echo "health_check=$HEALTH_CHECK" >> $GITHUB_OUTPUT
             echo "sync_create=$SYNC_CREATE" >> $GITHUB_OUTPUT
-            echo "sync_update=$SYNC_UPDATE" >> $GITHUB_OUTPUT
-            echo "sync_status=$SYNC_STATUS" >> $GITHUB_OUTPUT
-            echo "validation_uuid=$VALIDATION_UUID" >> $GITHUB_OUTPUT
-            echo "validation_fields=$VALIDATION_FIELDS" >> $GITHUB_OUTPUT
+            echo "get_available=$GET_AVAILABLE" >> $GITHUB_OUTPUT
+            echo "get_sold_before=$GET_SOLD_BEFORE" >> $GITHUB_OUTPUT
+            echo "purchase=$PURCHASE" >> $GITHUB_OUTPUT
+            echo "get_available_after=$GET_AVAILABLE_AFTER" >> $GITHUB_OUTPUT
+            echo "get_sold_after=$GET_SOLD_AFTER" >> $GITHUB_OUTPUT
+            echo "payment_confirm=$PAYMENT_CONFIRM" >> $GITHUB_OUTPUT
+            echo "payment_invalid=$PAYMENT_INVALID" >> $GITHUB_OUTPUT
+            echo "purchase_not_found=$PURCHASE_NOT_FOUND" >> $GITHUB_OUTPUT
+            echo "purchase_not_available=$PURCHASE_NOT_AVAILABLE" >> $GITHUB_OUTPUT
+            echo "purchase_validation=$PURCHASE_VALIDATION" >> $GITHUB_OUTPUT
+            echo "sync_validation=$SYNC_VALIDATION" >> $GITHUB_OUTPUT
             echo "all_passed=$ALL_PASSED" >> $GITHUB_OUTPUT
             
             # Save full output for details
@@ -121,11 +130,21 @@ jobs:
             | Test | Status |
             |------|--------|
             | Health Check (`GET /health`) | ${{ steps.parse.outputs.health_check }} |
+            | **Internal API** | |
             | Sync Vehicle - Create (`POST /api/internal/vehicles/sync`) | ${{ steps.parse.outputs.sync_create }} |
-            | Sync Vehicle - Update | ${{ steps.parse.outputs.sync_update }} |
-            | Sync Vehicle - Status Change (SOLD) | ${{ steps.parse.outputs.sync_status }} |
-            | Validation Error - Invalid UUID | ${{ steps.parse.outputs.validation_uuid }} |
-            | Validation Error - Missing Fields | ${{ steps.parse.outputs.validation_fields }} |
+            | Sync Vehicle - Validation Error | ${{ steps.parse.outputs.sync_validation }} |
+            | **Sales API** | |
+            | Get Available Vehicles (`GET /api/sales/vehicles/available`) | ${{ steps.parse.outputs.get_available }} |
+            | Get Sold Vehicles - Before Purchase (`GET /api/sales/vehicles/sold`) | ${{ steps.parse.outputs.get_sold_before }} |
+            | Purchase Vehicle (`POST /api/sales/purchase`) | ${{ steps.parse.outputs.purchase }} |
+            | Get Available Vehicles - After Purchase | ${{ steps.parse.outputs.get_available_after }} |
+            | Get Sold Vehicles - After Purchase | ${{ steps.parse.outputs.get_sold_after }} |
+            | Purchase - Vehicle Not Found (404) | ${{ steps.parse.outputs.purchase_not_found }} |
+            | Purchase - Vehicle Not Available (400) | ${{ steps.parse.outputs.purchase_not_available }} |
+            | Purchase - Validation Error (400) | ${{ steps.parse.outputs.purchase_validation }} |
+            | **Payment Webhook** | |
+            | Payment Webhook - Confirm (`POST /api/sales/payment/webhook`) | ${{ steps.parse.outputs.payment_confirm }} |
+            | Payment Webhook - Invalid Code (404) | ${{ steps.parse.outputs.payment_invalid }} |
             
             <details>
             <summary>📋 Full Test Output</summary>
@@ -139,4 +158,3 @@ jobs:
             ---
             *This comment will be updated on each push to the PR.*
           edit-mode: replace
-

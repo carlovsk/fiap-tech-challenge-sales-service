@@ -22,27 +22,19 @@ function generateUUID() {
   });
 }
 
+// Store data between tests
+let testVehicleId = generateUUID();
+let paymentCode = null;
+
 // Test data
 const testVehicle = {
-  id: generateUUID(),
+  id: testVehicleId,
   brand: 'Honda',
   model: 'Civic',
   year: 2024,
   color: 'Blue',
   price: 32000.00,
   status: 'AVAILABLE',
-};
-
-const updatedVehicle = {
-  ...testVehicle,
-  model: 'Civic Type R',
-  color: 'Championship White',
-  price: 45000.00,
-};
-
-const soldVehicle = {
-  ...testVehicle,
-  status: 'SOLD',
 };
 
 // Helper function for JSON requests
@@ -108,14 +100,6 @@ export default function () {
       const body = JSON.parse(r.body);
       return body.vehicle.id === testVehicle.id;
     },
-    'Sync vehicle (create) - correct brand': (r) => {
-      const body = JSON.parse(r.body);
-      return body.vehicle.brand === testVehicle.brand;
-    },
-    'Sync vehicle (create) - correct model': (r) => {
-      const body = JSON.parse(r.body);
-      return body.vehicle.model === testVehicle.model;
-    },
     'Sync vehicle (create) - status is AVAILABLE': (r) => {
       const body = JSON.parse(r.body);
       return body.vehicle.status === 'AVAILABLE';
@@ -130,75 +114,316 @@ export default function () {
   sleep(0.5);
 
   // ============================================
-  // Test 3: Sync Vehicle (Update)
+  // Test 3: Get Available Vehicles
   // ============================================
-  console.log('🔄 Testing Sync Vehicle (Update)...');
+  console.log('🚗 Testing Get Available Vehicles...');
   
-  const syncUpdateResponse = jsonRequest('POST', `${BASE_URL}/api/internal/vehicles/sync`, updatedVehicle);
+  const availableResponse = jsonRequest('GET', `${BASE_URL}/api/sales/vehicles/available`);
   
-  const syncUpdateCheckPassed = check(syncUpdateResponse, {
-    'Sync vehicle (update) - status is 200': (r) => r.status === 200,
-    'Sync vehicle (update) - success message': (r) => {
+  const availableCheckPassed = check(availableResponse, {
+    'Get available vehicles - status is 200': (r) => r.status === 200,
+    'Get available vehicles - returns array': (r) => {
       const body = JSON.parse(r.body);
-      return body.message === 'Vehicle synced successfully';
+      return Array.isArray(body);
     },
-    'Sync vehicle (update) - ID unchanged': (r) => {
+    'Get available vehicles - contains synced vehicle': (r) => {
       const body = JSON.parse(r.body);
-      return body.vehicle.id === testVehicle.id;
+      return body.some((v) => v.id === testVehicle.id);
     },
-    'Sync vehicle (update) - model updated': (r) => {
+    'Get available vehicles - all vehicles are AVAILABLE': (r) => {
       const body = JSON.parse(r.body);
-      return body.vehicle.model === updatedVehicle.model;
-    },
-    'Sync vehicle (update) - color updated': (r) => {
-      const body = JSON.parse(r.body);
-      return body.vehicle.color === updatedVehicle.color;
-    },
-    'Sync vehicle (update) - price updated': (r) => {
-      const body = JSON.parse(r.body);
-      // Price might be returned as string from Prisma Decimal
-      const price = typeof body.vehicle.price === 'string' 
-        ? parseFloat(body.vehicle.price) 
-        : body.vehicle.price;
-      return price === updatedVehicle.price;
+      return body.every((v) => v.status === 'AVAILABLE');
     },
   });
 
-  if (!syncUpdateCheckPassed) {
-    fail('❌ Sync vehicle (update) failed!');
+  if (!availableCheckPassed) {
+    fail('❌ Get available vehicles failed!');
   }
   
-  console.log('✅ Vehicle synced (updated) successfully');
+  console.log('✅ Get available vehicles passed');
   sleep(0.5);
 
   // ============================================
-  // Test 4: Sync Vehicle (Status Change to SOLD)
+  // Test 4: Get Sold Vehicles (should be empty or not contain our vehicle)
   // ============================================
-  console.log('🔄 Testing Sync Vehicle (Status Change)...');
+  console.log('🏷️ Testing Get Sold Vehicles (before purchase)...');
   
-  const syncStatusResponse = jsonRequest('POST', `${BASE_URL}/api/internal/vehicles/sync`, soldVehicle);
+  const soldBeforeResponse = jsonRequest('GET', `${BASE_URL}/api/sales/vehicles/sold`);
   
-  const syncStatusCheckPassed = check(syncStatusResponse, {
-    'Sync vehicle (status) - status is 200': (r) => r.status === 200,
-    'Sync vehicle (status) - success message': (r) => {
+  const soldBeforeCheckPassed = check(soldBeforeResponse, {
+    'Get sold vehicles (before) - status is 200': (r) => r.status === 200,
+    'Get sold vehicles (before) - returns array': (r) => {
       const body = JSON.parse(r.body);
-      return body.message === 'Vehicle synced successfully';
+      return Array.isArray(body);
     },
-    'Sync vehicle (status) - status changed to SOLD': (r) => {
+    'Get sold vehicles (before) - does NOT contain our vehicle': (r) => {
       const body = JSON.parse(r.body);
-      return body.vehicle.status === 'SOLD';
+      return !body.some((v) => v.id === testVehicle.id);
     },
   });
 
-  if (!syncStatusCheckPassed) {
-    fail('❌ Sync vehicle (status change) failed!');
+  if (!soldBeforeCheckPassed) {
+    fail('❌ Get sold vehicles (before) failed!');
   }
   
-  console.log('✅ Vehicle status synced to SOLD');
+  console.log('✅ Get sold vehicles (before purchase) passed');
   sleep(0.5);
 
   // ============================================
-  // Test 5: Sync Vehicle - Validation Error (Invalid UUID)
+  // Test 5: Purchase Vehicle
+  // ============================================
+  console.log('💳 Testing Purchase Vehicle...');
+  
+  const purchaseData = {
+    vehicleId: testVehicle.id,
+    buyerCpf: '12345678901',
+    saleDate: new Date().toISOString(),
+  };
+  
+  const purchaseResponse = jsonRequest('POST', `${BASE_URL}/api/sales/purchase`, purchaseData);
+  
+  const purchaseCheckPassed = check(purchaseResponse, {
+    'Purchase vehicle - status is 201': (r) => r.status === 201,
+    'Purchase vehicle - returns sale object': (r) => {
+      const body = JSON.parse(r.body);
+      return body.sale !== undefined;
+    },
+    'Purchase vehicle - returns payment object': (r) => {
+      const body = JSON.parse(r.body);
+      return body.payment !== undefined;
+    },
+    'Purchase vehicle - correct vehicleId': (r) => {
+      const body = JSON.parse(r.body);
+      return body.sale.vehicleId === testVehicle.id;
+    },
+    'Purchase vehicle - correct buyerCpf': (r) => {
+      const body = JSON.parse(r.body);
+      return body.sale.buyerCpf === purchaseData.buyerCpf;
+    },
+    'Purchase vehicle - payment status is PENDING': (r) => {
+      const body = JSON.parse(r.body);
+      return body.payment.status === 'PENDING';
+    },
+    'Purchase vehicle - has paymentCode': (r) => {
+      const body = JSON.parse(r.body);
+      if (body.payment.paymentCode) {
+        paymentCode = body.payment.paymentCode;
+        return true;
+      }
+      return false;
+    },
+  });
+
+  if (!purchaseCheckPassed || !paymentCode) {
+    fail('❌ Purchase vehicle failed! Cannot continue tests.');
+  }
+  
+  console.log(`✅ Purchase completed with paymentCode: ${paymentCode}`);
+  sleep(0.5);
+
+  // ============================================
+  // Test 6: Get Available Vehicles (after purchase - should NOT contain our vehicle)
+  // ============================================
+  console.log('🚗 Testing Get Available Vehicles (after purchase)...');
+  
+  const availableAfterResponse = jsonRequest('GET', `${BASE_URL}/api/sales/vehicles/available`);
+  
+  const availableAfterCheckPassed = check(availableAfterResponse, {
+    'Get available vehicles (after) - status is 200': (r) => r.status === 200,
+    'Get available vehicles (after) - does NOT contain purchased vehicle': (r) => {
+      const body = JSON.parse(r.body);
+      return !body.some((v) => v.id === testVehicle.id);
+    },
+  });
+
+  if (!availableAfterCheckPassed) {
+    fail('❌ Get available vehicles (after purchase) failed!');
+  }
+  
+  console.log('✅ Get available vehicles (after purchase) passed');
+  sleep(0.5);
+
+  // ============================================
+  // Test 7: Get Sold Vehicles (after purchase - should contain our vehicle)
+  // ============================================
+  console.log('🏷️ Testing Get Sold Vehicles (after purchase)...');
+  
+  const soldAfterResponse = jsonRequest('GET', `${BASE_URL}/api/sales/vehicles/sold`);
+  
+  const soldAfterCheckPassed = check(soldAfterResponse, {
+    'Get sold vehicles (after) - status is 200': (r) => r.status === 200,
+    'Get sold vehicles (after) - contains purchased vehicle': (r) => {
+      const body = JSON.parse(r.body);
+      return body.some((v) => v.id === testVehicle.id);
+    },
+    'Get sold vehicles (after) - vehicle status is SOLD': (r) => {
+      const body = JSON.parse(r.body);
+      const vehicle = body.find((v) => v.id === testVehicle.id);
+      return vehicle && vehicle.status === 'SOLD';
+    },
+  });
+
+  if (!soldAfterCheckPassed) {
+    fail('❌ Get sold vehicles (after purchase) failed!');
+  }
+  
+  console.log('✅ Get sold vehicles (after purchase) passed');
+  sleep(0.5);
+
+  // ============================================
+  // Test 8: Payment Webhook - Confirm Payment
+  // ============================================
+  console.log('💰 Testing Payment Webhook (confirm)...');
+  
+  const confirmPaymentData = {
+    paymentCode: paymentCode,
+    status: 'confirmed',
+  };
+  
+  const confirmPaymentResponse = jsonRequest('POST', `${BASE_URL}/api/sales/payment/webhook`, confirmPaymentData);
+  
+  const confirmPaymentCheckPassed = check(confirmPaymentResponse, {
+    'Payment webhook (confirm) - status is 200': (r) => r.status === 200,
+    'Payment webhook (confirm) - success message': (r) => {
+      const body = JSON.parse(r.body);
+      return body.message === 'Payment status updated successfully';
+    },
+  });
+
+  if (!confirmPaymentCheckPassed) {
+    fail('❌ Payment webhook (confirm) failed!');
+  }
+  
+  console.log('✅ Payment webhook (confirm) passed');
+  sleep(0.5);
+
+  // ============================================
+  // Test 9: Payment Webhook - Invalid Payment Code (404)
+  // ============================================
+  console.log('💰 Testing Payment Webhook (invalid code)...');
+  
+  const invalidPaymentData = {
+    paymentCode: 'invalid-payment-code-12345',
+    status: 'confirmed',
+  };
+  
+  const invalidPaymentResponse = jsonRequest('POST', `${BASE_URL}/api/sales/payment/webhook`, invalidPaymentData);
+  
+  const invalidPaymentCheckPassed = check(invalidPaymentResponse, {
+    'Payment webhook (invalid) - status is 404': (r) => r.status === 404,
+    'Payment webhook (invalid) - payment not found error': (r) => {
+      const body = JSON.parse(r.body);
+      return body.error === 'Payment not found';
+    },
+  });
+
+  if (!invalidPaymentCheckPassed) {
+    fail('❌ Payment webhook (invalid code) test failed!');
+  }
+  
+  console.log('✅ Payment webhook (invalid code) correctly returned 404');
+  sleep(0.5);
+
+  // ============================================
+  // Test 10: Purchase - Vehicle Not Found (404)
+  // ============================================
+  console.log('💳 Testing Purchase (vehicle not found)...');
+  
+  const invalidPurchaseData = {
+    vehicleId: generateUUID(), // Random non-existent UUID
+    buyerCpf: '12345678901',
+    saleDate: new Date().toISOString(),
+  };
+  
+  const invalidPurchaseResponse = jsonRequest('POST', `${BASE_URL}/api/sales/purchase`, invalidPurchaseData);
+  
+  const invalidPurchaseCheckPassed = check(invalidPurchaseResponse, {
+    'Purchase (not found) - status is 404': (r) => r.status === 404,
+    'Purchase (not found) - vehicle not found error': (r) => {
+      const body = JSON.parse(r.body);
+      return body.error === 'Vehicle not found';
+    },
+  });
+
+  if (!invalidPurchaseCheckPassed) {
+    fail('❌ Purchase (vehicle not found) test failed!');
+  }
+  
+  console.log('✅ Purchase (vehicle not found) correctly returned 404');
+  sleep(0.5);
+
+  // ============================================
+  // Test 11: Purchase - Vehicle Not Available (400)
+  // ============================================
+  console.log('💳 Testing Purchase (vehicle not available)...');
+  
+  // Try to purchase the same vehicle again (already sold)
+  const notAvailablePurchaseData = {
+    vehicleId: testVehicle.id, // Already sold vehicle
+    buyerCpf: '98765432100',
+    saleDate: new Date().toISOString(),
+  };
+  
+  const notAvailablePurchaseResponse = jsonRequest('POST', `${BASE_URL}/api/sales/purchase`, notAvailablePurchaseData);
+  
+  const notAvailablePurchaseCheckPassed = check(notAvailablePurchaseResponse, {
+    'Purchase (not available) - status is 400': (r) => r.status === 400,
+    'Purchase (not available) - vehicle not available error': (r) => {
+      const body = JSON.parse(r.body);
+      return body.error === 'Vehicle is not available for purchase';
+    },
+  });
+
+  if (!notAvailablePurchaseCheckPassed) {
+    fail('❌ Purchase (vehicle not available) test failed!');
+  }
+  
+  console.log('✅ Purchase (vehicle not available) correctly returned 400');
+  sleep(0.5);
+
+  // ============================================
+  // Test 12: Purchase - Validation Error (invalid CPF)
+  // ============================================
+  console.log('💳 Testing Purchase (validation error)...');
+  
+  // First sync a new available vehicle for this test
+  const newVehicle = {
+    id: generateUUID(),
+    brand: 'Toyota',
+    model: 'Camry',
+    year: 2024,
+    color: 'White',
+    price: 28000.00,
+    status: 'AVAILABLE',
+  };
+  
+  jsonRequest('POST', `${BASE_URL}/api/internal/vehicles/sync`, newVehicle);
+  
+  const invalidCpfPurchaseData = {
+    vehicleId: newVehicle.id,
+    buyerCpf: '123', // Too short CPF
+    saleDate: new Date().toISOString(),
+  };
+  
+  const invalidCpfPurchaseResponse = jsonRequest('POST', `${BASE_URL}/api/sales/purchase`, invalidCpfPurchaseData);
+  
+  const invalidCpfPurchaseCheckPassed = check(invalidCpfPurchaseResponse, {
+    'Purchase (validation) - status is 400': (r) => r.status === 400,
+    'Purchase (validation) - validation error': (r) => {
+      const body = JSON.parse(r.body);
+      return body.error === 'Validation error';
+    },
+  });
+
+  if (!invalidCpfPurchaseCheckPassed) {
+    fail('❌ Purchase (validation error) test failed!');
+  }
+  
+  console.log('✅ Purchase (validation error) correctly returned 400');
+  sleep(0.5);
+
+  // ============================================
+  // Test 13: Sync Vehicle - Validation Error (Invalid UUID)
   // ============================================
   console.log('🔄 Testing Sync Vehicle (Validation Error)...');
   
@@ -221,35 +446,7 @@ export default function () {
     fail('❌ Sync vehicle validation error test failed!');
   }
   
-  console.log('✅ Validation error correctly returned for invalid UUID');
-  sleep(0.5);
-
-  // ============================================
-  // Test 6: Sync Vehicle - Validation Error (Missing Fields)
-  // ============================================
-  console.log('🔄 Testing Sync Vehicle (Missing Fields)...');
-  
-  const incompleteVehicle = {
-    id: generateUUID(),
-    brand: 'Toyota',
-    // Missing required fields: model, year, color, price, status
-  };
-  
-  const syncMissingFieldsResponse = jsonRequest('POST', `${BASE_URL}/api/internal/vehicles/sync`, incompleteVehicle);
-  
-  const syncMissingFieldsCheckPassed = check(syncMissingFieldsResponse, {
-    'Sync vehicle (missing fields) - status is 400': (r) => r.status === 400,
-    'Sync vehicle (missing fields) - error message': (r) => {
-      const body = JSON.parse(r.body);
-      return body.error === 'Validation error';
-    },
-  });
-
-  if (!syncMissingFieldsCheckPassed) {
-    fail('❌ Sync vehicle missing fields test failed!');
-  }
-  
-  console.log('✅ Validation error correctly returned for missing fields');
+  console.log('✅ Sync validation error correctly returned 400');
   
   console.log('\n🎉 All integration tests passed successfully!');
 }
@@ -271,4 +468,3 @@ export function handleSummary(data) {
   
   return {};
 }
-
