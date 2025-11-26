@@ -13,6 +13,7 @@
     "clean": "rm -rf dist",
     "test": "vitest --run --coverage",
     "test:watch": "vitest --watch",
+    "test:integration": "./scripts/run-integration-tests.sh",
     "prisma:migrate": "npx prisma migrate dev",
     "prisma:migrate:docker": "docker-compose exec app npx prisma migrate dev",
     "prisma:generate": "npx prisma generate",
