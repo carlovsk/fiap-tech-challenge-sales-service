@@ -172,7 +172,7 @@ docker-compose -f docker-compose.test.yml down -v
 
 - `POST /api/internal/vehicles/sync` - Sync vehicle from management service
 
-### Sync Vehicle Schema
+#### Sync Vehicle Schema
 
 ```json
 {
@@ -183,6 +183,55 @@ docker-compose -f docker-compose.test.yml down -v
   "color": "string (required)",
   "price": "number (positive)",
   "status": "AVAILABLE | SOLD"
+}
+```
+
+### Sales API
+
+- `GET /api/sales/vehicles/available` - List all available vehicles for purchase
+- `GET /api/sales/vehicles/sold` - List all sold vehicles
+- `POST /api/sales/purchase` - Purchase a vehicle
+- `POST /api/sales/payment/webhook` - Payment status webhook (from payment provider)
+
+#### Purchase Schema
+
+```json
+{
+  "vehicleId": "uuid (required)",
+  "buyerCpf": "string (11-14 characters, required)",
+  "saleDate": "ISO date string (required)"
+}
+```
+
+#### Payment Webhook Schema
+
+```json
+{
+  "paymentCode": "string (required)",
+  "status": "confirmed | cancelled"
+}
+```
+
+#### Purchase Response
+
+```json
+{
+  "sale": {
+    "id": "uuid",
+    "vehicleId": "uuid",
+    "buyerCpf": "string",
+    "saleDate": "ISO date",
+    "totalAmount": "number",
+    "createdAt": "ISO date",
+    "updatedAt": "ISO date"
+  },
+  "payment": {
+    "id": "uuid",
+    "paymentCode": "uuid",
+    "status": "PENDING",
+    "createdAt": "ISO date",
+    "updatedAt": "ISO date"
+  }
 }
 ```
 
