@@ -1,3 +1,4 @@
+import path from 'path';
 import { defineConfig } from 'vitest/config';
 import path from 'path';
 
@@ -28,6 +29,11 @@ export default defineConfig({
         branches: 80,
         statements: 80,
       },
+    },
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
     },
   },
   resolve: {
