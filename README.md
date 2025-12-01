@@ -1,26 +1,26 @@
-# Vehicle Sales Service
+# Serviço de Vendas de Veículos
 
-A REST API service for managing vehicle sales built with Express.js, TypeScript, and Prisma.
+Uma API REST para gerenciar vendas de veículos construída com Express.js, TypeScript e Prisma.
 
-## Table of Contents
+## Índice
 
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Development](#development)
-- [Testing](#testing)
-  - [Unit Tests](#unit-tests)
-  - [Integration Tests](#integration-tests)
-- [API Endpoints](#api-endpoints)
+- [Pré-requisitos](#pré-requisitos)
+- [Instalação](#instalação)
+- [Desenvolvimento](#desenvolvimento)
+- [Testes](#testes)
+  - [Testes Unitários](#testes-unitários)
+  - [Testes de Integração](#testes-de-integração)
+- [Endpoints da API](#endpoints-da-api)
 
-## Prerequisites
+## Pré-requisitos
 
-- **Node.js** 22 or higher
-- **Docker** and **Docker Compose**
-- **k6** (for integration tests)
+- **Node.js** 22 ou superior
+- **Docker** e **Docker Compose**
+- **k6** (para testes de integração)
 
-### Installing k6
+### Instalando o k6
 
-k6 is required to run integration tests. Install it based on your operating system:
+O k6 é necessário para executar os testes de integração. Instale-o de acordo com o seu sistema operacional:
 
 #### macOS (Homebrew)
 
@@ -57,162 +57,162 @@ sudo dnf install https://dl.k6.io/rpm/repo.rpm
 sudo dnf install k6
 ```
 
-#### Docker (Alternative)
+#### Docker (Alternativa)
 
 ```bash
 docker pull grafana/k6
 ```
 
-For more installation options, visit: https://k6.io/docs/get-started/installation/
+Para mais opções de instalação, visite: https://k6.io/docs/get-started/installation/
 
-## Installation
+## Instalação
 
-1. Clone the repository
-2. Install dependencies:
+1. Clone o repositório
+2. Instale as dependências:
 
 ```bash
 npm install
 ```
 
-3. Copy the environment file:
+3. Copie o arquivo de ambiente:
 
 ```bash
 cp .env.example .env
 ```
 
-4. Start the development environment:
+4. Inicie o ambiente de desenvolvimento:
 
 ```bash
 docker-compose -f infra/docker/docker-compose.yml up -d
 ```
 
-5. Run database migrations:
+5. Execute as migrações do banco de dados:
 
 ```bash
 npm run prisma:migrate
 ```
 
-## Development
+## Desenvolvimento
 
-Start the development server:
+Inicie o servidor de desenvolvimento:
 
 ```bash
 npm run dev
 ```
 
-Or using Docker Compose:
+Ou usando Docker Compose:
 
 ```bash
 docker-compose -f infra/docker/docker-compose.yml up
 ```
 
-The server will be available at `http://localhost:3001`.
+O servidor estará disponível em `http://localhost:3001`.
 
-## Testing
+## Testes
 
-### Unit Tests
+### Testes Unitários
 
-Run unit tests with coverage:
+Execute os testes unitários com cobertura:
 
 ```bash
 npm test
 ```
 
-Run tests in watch mode:
+Execute os testes em modo watch:
 
 ```bash
 npm run test:watch
 ```
 
-### Integration Tests
+### Testes de Integração
 
-Integration tests use k6 to test the API endpoints against a real database.
+Os testes de integração usam k6 para testar os endpoints da API contra um banco de dados real.
 
-**Prerequisites:**
-- Docker and Docker Compose installed
-- k6 installed (see [Installing k6](#installing-k6))
+**Pré-requisitos:**
+- Docker e Docker Compose instalados
+- k6 instalado (veja [Instalando o k6](#instalando-o-k6))
 
-Run integration tests:
+Execute os testes de integração:
 
 ```bash
 npm run test:integration
 ```
 
-This command will:
-1. Start PostgreSQL and the application in Docker containers
-2. Wait for the service to be healthy
-3. Run k6 integration tests
-4. Stop and clean up containers
+Este comando irá:
+1. Iniciar PostgreSQL e a aplicação em containers Docker
+2. Aguardar o serviço ficar saudável
+3. Executar os testes de integração com k6
+4. Parar e limpar os containers
 
-**Manual integration testing:**
+**Testes de integração manuais:**
 
-If you want to run the tests manually:
+Se você quiser executar os testes manualmente:
 
 ```bash
-# Start the test environment
+# Inicie o ambiente de teste
 docker-compose -f infra/docker/docker-compose.test.yml up -d
 
-# Wait for services to be ready
+# Aguarde os serviços ficarem prontos
 docker-compose -f infra/docker/docker-compose.test.yml exec app wget -q --spider http://localhost:3001/health
 
-# Run k6 tests
+# Execute os testes k6
 k6 run k6/integration-tests.js
 
-# Stop and clean up
+# Pare e limpe
 docker-compose -f infra/docker/docker-compose.test.yml down -v
 ```
 
-## API Endpoints
+## Endpoints da API
 
 ### Health Check
 
-- `GET /health` - Check service health
+- `GET /health` - Verifica a saúde do serviço
 
-### Internal API (Vehicle Sync)
+### API Interna (Sincronização de Veículos)
 
-- `POST /api/internal/vehicles/sync` - Sync vehicle from management service
+- `POST /api/internal/vehicles/sync` - Sincroniza veículo do serviço de gerenciamento
 
-#### Sync Vehicle Schema
+#### Schema de Sincronização de Veículo
 
 ```json
 {
-  "id": "uuid (required)",
-  "brand": "string (required)",
-  "model": "string (required)",
-  "year": "number (1900 - current year + 1)",
-  "color": "string (required)",
-  "price": "number (positive)",
+  "id": "uuid (obrigatório)",
+  "brand": "string (obrigatório)",
+  "model": "string (obrigatório)",
+  "year": "number (1900 - ano atual + 1)",
+  "color": "string (obrigatório)",
+  "price": "number (positivo)",
   "status": "AVAILABLE | SOLD"
 }
 ```
 
-### Sales API
+### API de Vendas
 
-- `GET /api/sales/vehicles/available` - List all available vehicles for purchase
-- `GET /api/sales/vehicles/sold` - List all sold vehicles
-- `POST /api/sales/purchase` - Purchase a vehicle
-- `POST /api/sales/payment/webhook` - Payment status webhook (from payment provider)
+- `GET /api/sales/vehicles/available` - Lista todos os veículos disponíveis para compra
+- `GET /api/sales/vehicles/sold` - Lista todos os veículos vendidos
+- `POST /api/sales/purchase` - Compra um veículo
+- `POST /api/sales/payment/webhook` - Webhook de status de pagamento (do provedor de pagamento)
 
-#### Purchase Schema
+#### Schema de Compra
 
 ```json
 {
-  "vehicleId": "uuid (required)",
-  "buyerCpf": "string (11-14 characters, required)",
-  "saleDate": "ISO date string (required)"
+  "vehicleId": "uuid (obrigatório)",
+  "buyerCpf": "string (11-14 caracteres, obrigatório)",
+  "saleDate": "string de data ISO (obrigatório)"
 }
 ```
 
-#### Payment Webhook Schema
+#### Schema de Webhook de Pagamento
 
 ```json
 {
-  "paymentCode": "string (required)",
+  "paymentCode": "string (obrigatório)",
   "status": "confirmed | cancelled"
 }
 ```
 
-#### Purchase Response
+#### Resposta de Compra
 
 ```json
 {
@@ -220,55 +220,55 @@ docker-compose -f infra/docker/docker-compose.test.yml down -v
     "id": "uuid",
     "vehicleId": "uuid",
     "buyerCpf": "string",
-    "saleDate": "ISO date",
+    "saleDate": "data ISO",
     "totalAmount": "number",
-    "createdAt": "ISO date",
-    "updatedAt": "ISO date"
+    "createdAt": "data ISO",
+    "updatedAt": "data ISO"
   },
   "payment": {
     "id": "uuid",
     "paymentCode": "uuid",
     "status": "PENDING",
-    "createdAt": "ISO date",
-    "updatedAt": "ISO date"
+    "createdAt": "data ISO",
+    "updatedAt": "data ISO"
   }
 }
 ```
 
-## Database Models
+## Modelos do Banco de Dados
 
 ### Vehicle
-- Synced from the management service
-- Contains: id, brand, model, year, color, price, status, syncedAt
+- Sincronizado do serviço de gerenciamento
+- Contém: id, brand, model, year, color, price, status, syncedAt
 
 ### Sale
-- Represents a vehicle sale transaction
-- Contains: id, vehicleId, buyerCpf, saleDate, totalAmount
+- Representa uma transação de venda de veículo
+- Contém: id, vehicleId, buyerCpf, saleDate, totalAmount
 
 ### Payment
-- Payment information for a sale
-- Contains: id, saleId, paymentCode, status (PENDING, CONFIRMED, CANCELLED)
+- Informações de pagamento de uma venda
+- Contém: id, saleId, paymentCode, status (PENDING, CONFIRMED, CANCELLED)
 
-## Environment Variables
+## Variáveis de Ambiente
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server port | 3001 |
-| `DATABASE_URL` | PostgreSQL connection URL | - |
-| `NODE_ENV` | Environment (development, test, production) | development |
+| Variável | Descrição | Padrão |
+|----------|-----------|--------|
+| `PORT` | Porta do servidor | 3001 |
+| `DATABASE_URL` | URL de conexão PostgreSQL | - |
+| `NODE_ENV` | Ambiente (development, test, production) | development |
 
-## Kubernetes Deployment (Minikube)
+## Deploy no Kubernetes (Minikube)
 
-This service can be deployed to a local Minikube cluster.
+Este serviço pode ser implantado em um cluster Minikube local.
 
-### Prerequisites
+### Pré-requisitos
 
-- **Minikube** installed and running
-- **kubectl** configured to use Minikube
-- **Docker** (for building images)
-- **Management Service** deployed first (to get its URL)
+- **Minikube** instalado e em execução
+- **kubectl** configurado para usar Minikube
+- **Docker** (para construir imagens)
+- **Serviço de Gerenciamento** implantado primeiro (para obter sua URL)
 
-#### Installing Minikube
+#### Instalando o Minikube
 
 **macOS (Homebrew):**
 ```bash
@@ -283,185 +283,184 @@ sudo install minikube-linux-amd64 /usr/local/bin/minikube
 
 **Windows:**
 ```bash
-# Using Chocolatey
+# Usando Chocolatey
 choco install minikube
 
-# Or download from: https://minikube.sigs.k8s.io/docs/start/
+# Ou baixe de: https://minikube.sigs.k8s.io/docs/start/
 ```
 
-**Start Minikube:**
+**Iniciar Minikube:**
 ```bash
 minikube start
 ```
 
-**Verify installation:**
+**Verificar instalação:**
 ```bash
 minikube status
 kubectl get nodes
 ```
 
-**Note:** Make sure Minikube is running before using the `k8s:*` commands. If you see an error like "cluster does not exist", run `minikube start` first.
+**Nota:** Certifique-se de que o Minikube está em execução antes de usar os comandos `k8s:*`. Se você ver um erro como "cluster does not exist", execute `minikube start` primeiro.
 
-### Building and Deploying
+### Construindo e Implantando
 
-**Before deploying:**
+**Antes de implantar:**
 
-1. **Get the Management Service URL:**
+1. **Obtenha a URL do Serviço de Gerenciamento:**
 
-If the management service is already deployed:
+Se o serviço de gerenciamento já estiver implantado:
 
 ```bash
 minikube service vehicle-management-service --url
 ```
 
-2. **Update the ConfigMap:**
+2. **Atualize o ConfigMap:**
 
-Update `infra/k8s/configmap.yaml` with the management service URL. You can use either:
-- The Kubernetes service DNS name: `http://vehicle-management-service:80` (for internal communication)
-- The external URL from Minikube (if you need external access)
+Atualize `infra/k8s/configmap.yaml` com a URL do serviço de gerenciamento. Você pode usar:
+- O nome DNS do serviço Kubernetes: `http://vehicle-management-service:80` (para comunicação interna)
+- A URL externa do Minikube (se precisar de acesso externo)
 
-**Quick Start (All-in-one):**
+**Início Rápido (Tudo em um):**
 
 ```bash
 npm run k8s:start
 ```
 
-This will build the Docker image, load it into Minikube, and deploy all Kubernetes resources.
+Isso irá construir a imagem Docker, carregá-la no Minikube e implantar todos os recursos do Kubernetes.
 
-**Step-by-step:**
+**Passo a passo:**
 
-1. **Build the Docker image:**
+1. **Construa a imagem Docker:**
 
 ```bash
 npm run k8s:build
 ```
 
-Or manually:
+Ou manualmente:
 
 ```bash
 docker build -f infra/docker/Dockerfile -t vehicle-sales-service:latest .
 ```
 
-2. **Load the image into Minikube:**
+2. **Carregue a imagem no Minikube:**
 
 ```bash
 npm run k8s:load
 ```
 
-3. **Apply Kubernetes manifests:**
+3. **Aplique os manifests do Kubernetes:**
 
 ```bash
 npm run k8s:deploy
 ```
 
-This will create:
-- PostgreSQL StatefulSet with PersistentVolumeClaim
-- ConfigMap with application configuration
-- Secret with database credentials
-- Deployment for the sales service
-- LoadBalancer Service
+Isso irá criar:
+- StatefulSet do PostgreSQL com PersistentVolumeClaim
+- ConfigMap com configuração da aplicação
+- Secret com credenciais do banco de dados
+- Deployment para o serviço de vendas
+- Service do tipo LoadBalancer
 
-4. **Get the service URL:**
+4. **Obtenha a URL do serviço:**
 
 ```bash
 npm run k8s:url
 ```
 
-**Accessing the Service from Postman/External Tools:**
+**Acessando o Serviço do Postman/Ferramentas Externas:**
 
-There are several ways to access the services:
+Existem várias formas de acessar os serviços:
 
-**Option 1: Using Minikube Service Tunnel (Recommended)**
+**Opção 1: Usando Minikube Service Tunnel (Recomendado)**
 ```bash
 minikube service vehicle-sales-service --url
 ```
-This will output a URL like `http://127.0.0.1:XXXXX` that you can use directly in Postman.
+Isso irá exibir uma URL como `http://127.0.0.1:XXXXX` que você pode usar diretamente no Postman.
 
-**Option 2: Using NodePort with Minikube IP**
+**Opção 2: Usando NodePort com IP do Minikube**
 ```bash
-# Get Minikube IP
+# Obtenha o IP do Minikube
 minikube ip
 
-# Access the service (replace <MINIKUBE_IP> with the actual IP)
+# Acesse o serviço (substitua <MINIKUBE_IP> pelo IP real)
 http://<MINIKUBE_IP>:<NODE_PORT>
 ```
 
-To find the NodePort:
+Para encontrar o NodePort:
 ```bash
 kubectl get service vehicle-sales-service -o jsonpath='{.spec.ports[0].nodePort}'
 ```
 
-**Option 3: Using kubectl port-forward (Recommended for Postman)**
+**Opção 3: Usando kubectl port-forward (Recomendado para Postman)**
 ```bash
 npm run k8s:port-forward
 ```
-Or manually:
+Ou manualmente:
 ```bash
 kubectl port-forward service/vehicle-sales-service 3001:80
 ```
-Then access via: `http://localhost:3001`
+Depois acesse via: `http://localhost:3001`
 
-**Note:** Keep the port-forward command running in a terminal while using Postman. The connection will be active as long as the command is running.
+**Nota:** Mantenha o comando port-forward em execução em um terminal enquanto usa o Postman. A conexão estará ativa enquanto o comando estiver rodando.
 
-**Other useful commands:**
+**Outros comandos úteis:**
 
-- `npm run k8s:logs` - View application logs
-- `npm run k8s:status` - Check status of pods, services, and deployments
-- `npm run k8s:restart` - Restart the deployment
-- `npm run k8s:delete` - Delete all Kubernetes resources
+- `npm run k8s:logs` - Visualiza os logs da aplicação
+- `npm run k8s:status` - Verifica o status dos pods, serviços e deployments
+- `npm run k8s:restart` - Reinicia o deployment
+- `npm run k8s:delete` - Deleta todos os recursos do Kubernetes
 
-### Important Notes
+### Notas Importantes
 
-- **Management Service URL**: Make sure to update the `MANAGEMENT_SERVICE_URL` in `infra/k8s/configmap.yaml` before deploying. After deployment, you can update it and run `kubectl apply -f infra/k8s/configmap.yaml` followed by `kubectl rollout restart deployment/vehicle-sales-service`.
+- **URL do Serviço de Gerenciamento**: Certifique-se de atualizar o `MANAGEMENT_SERVICE_URL` em `infra/k8s/configmap.yaml` antes de implantar. Após a implantação, você pode atualizá-lo e executar `kubectl apply -f infra/k8s/configmap.yaml` seguido de `kubectl rollout restart deployment/vehicle-sales-service`.
 
-- **Database Credentials**: Default credentials are in `infra/k8s/secret.yaml` (base64 encoded). Change them for production use.
+- **Credenciais do Banco de Dados**: As credenciais padrão estão em `infra/k8s/secret.yaml` (codificadas em base64). Altere-as para uso em produção.
 
-- **Service Discovery**: The management service URL in the ConfigMap uses Kubernetes service DNS (`http://vehicle-management-service:80`) by default. This works for internal communication within the cluster.
+- **Service Discovery**: A URL do serviço de gerenciamento no ConfigMap usa DNS de serviço do Kubernetes (`http://vehicle-management-service:80`) por padrão. Isso funciona para comunicação interna dentro do cluster.
 
-### Updating Configuration
+### Atualizando a Configuração
 
-To update the management service URL:
+Para atualizar a URL do serviço de gerenciamento:
 
-1. Get the management service URL:
+1. Obtenha a URL do serviço de gerenciamento:
 ```bash
 minikube service vehicle-management-service --url
 ```
 
-2. Update `infra/k8s/configmap.yaml` with the URL
-3. Apply the updated ConfigMap:
+2. Atualize `infra/k8s/configmap.yaml` com a URL
+3. Aplique o ConfigMap atualizado:
 ```bash
 kubectl apply -f infra/k8s/configmap.yaml
 ```
 
-4. Restart the deployment to pick up changes:
+4. Reinicie o deployment para aplicar as mudanças:
 ```bash
 kubectl rollout restart deployment/vehicle-sales-service
 ```
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start development server with hot reload |
-| `npm run build` | Build TypeScript to JavaScript |
-| `npm run docker:build` | Build Docker image for the service |
-| `npm test` | Run unit tests with coverage |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run test:integration` | Run k6 integration tests |
-| `npm run lint` | Run ESLint |
-| `npm run lint:fix` | Fix ESLint errors |
-| `npm run format` | Format code with Prettier |
-| `npm run prisma:migrate` | Run Prisma migrations |
-| `npm run prisma:generate` | Generate Prisma client |
-| `npm run prisma:studio` | Open Prisma Studio |
-| `npm run k8s:build` | Build Docker image for Kubernetes |
-| `npm run k8s:load` | Load Docker image into Minikube |
-| `npm run k8s:deploy` | Deploy Kubernetes manifests |
-| `npm run k8s:start` | Build, load, and deploy to Kubernetes (all-in-one) |
-| `npm run k8s:url` | Get the service URL from Minikube |
-| `npm run k8s:port-forward` | Forward service port to localhost (use for Postman) |
-| `npm run k8s:logs` | View application logs |
-| `npm run k8s:status` | Check status of Kubernetes resources |
-| `npm run k8s:restart` | Restart the Kubernetes deployment |
-| `npm run k8s:delete` | Delete all Kubernetes resources |
-
+| Script | Descrição |
+|--------|-----------|
+| `npm run dev` | Inicia o servidor de desenvolvimento com hot reload |
+| `npm run build` | Compila TypeScript para JavaScript |
+| `npm run docker:build` | Constrói a imagem Docker do serviço |
+| `npm test` | Executa testes unitários com cobertura |
+| `npm run test:watch` | Executa testes em modo watch |
+| `npm run test:integration` | Executa testes de integração com k6 |
+| `npm run lint` | Executa ESLint |
+| `npm run lint:fix` | Corrige erros do ESLint |
+| `npm run format` | Formata o código com Prettier |
+| `npm run prisma:migrate` | Executa migrações do Prisma |
+| `npm run prisma:generate` | Gera o cliente Prisma |
+| `npm run prisma:studio` | Abre o Prisma Studio |
+| `npm run k8s:build` | Constrói a imagem Docker para Kubernetes |
+| `npm run k8s:load` | Carrega a imagem Docker no Minikube |
+| `npm run k8s:deploy` | Implanta os manifests do Kubernetes |
+| `npm run k8s:start` | Constrói, carrega e implanta no Kubernetes (tudo em um) |
+| `npm run k8s:url` | Obtém a URL do serviço do Minikube |
+| `npm run k8s:port-forward` | Faz port-forward do serviço para localhost (use para Postman) |
+| `npm run k8s:logs` | Visualiza os logs da aplicação |
+| `npm run k8s:status` | Verifica o status dos recursos do Kubernetes |
+| `npm run k8s:restart` | Reinicia o deployment do Kubernetes |
+| `npm run k8s:delete` | Deleta todos os recursos do Kubernetes |
