@@ -16,26 +16,46 @@ echo "🚀 Starting integration test environment..."
 cleanup() {
   echo ""
   echo "🧹 Cleaning up test environment..."
-  docker compose -f docker-compose.test.yml down -v --remove-orphans 2>/dev/null || true
+  docker compose -f infra/docker/docker-compose.test.yml --project-directory "$PROJECT_DIR" down -v --remove-orphans 2>/dev/null || true
 }
 
 # Set trap to cleanup on exit
 trap cleanup EXIT
 
 # Stop any existing test containers
-docker compose -f docker-compose.test.yml down -v --remove-orphans 2>/dev/null || true
+docker compose -f infra/docker/docker-compose.test.yml --project-directory "$PROJECT_DIR" down -v --remove-orphans 2>/dev/null || true
 
 # Start the test environment
 echo "📦 Starting PostgreSQL and application containers..."
-docker compose -f docker-compose.test.yml up -d
+docker compose -f infra/docker/docker-compose.test.yml --project-directory "$PROJECT_DIR" up -d
 
 # Wait for the application to be healthy
 echo "⏳ Waiting for application to be healthy..."
-MAX_RETRIES=60
+MAX_RETRIES=90
 RETRY_COUNT=0
 
+# First, wait for container to be running
+echo "  Waiting for container to start..."
+while [ $RETRY_COUNT -lt 30 ]; do
+  if docker compose -f infra/docker/docker-compose.test.yml --project-directory "$PROJECT_DIR" ps app | grep -q "Up"; then
+    break
+  fi
+  RETRY_COUNT=$((RETRY_COUNT + 1))
+  sleep 1
+done
+
+RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-  if docker compose -f docker-compose.test.yml exec -T app wget -q --spider http://localhost:3001/health 2>/dev/null; then
+  # Check if container is still running
+  if ! docker compose -f infra/docker/docker-compose.test.yml --project-directory "$PROJECT_DIR" ps app | grep -q "Up"; then
+    echo "❌ Container stopped unexpectedly!"
+    echo "📋 Application logs:"
+    docker compose -f infra/docker/docker-compose.test.yml --project-directory "$PROJECT_DIR" logs app
+    exit 1
+  fi
+  
+  # Try to check health endpoint using curl (more reliable than wget)
+  if docker compose -f infra/docker/docker-compose.test.yml --project-directory "$PROJECT_DIR" exec -T app sh -c "curl -f -s http://localhost:3001/health > /dev/null 2>&1" 2>/dev/null; then
     echo "✅ Application is healthy!"
     break
   fi
@@ -45,11 +65,20 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
   if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
     echo "❌ Application failed to become healthy after $MAX_RETRIES attempts"
     echo "📋 Application logs:"
-    docker compose -f docker-compose.test.yml logs app
+    docker compose -f infra/docker/docker-compose.test.yml --project-directory "$PROJECT_DIR" logs app
+    echo ""
+    echo "📋 Container status:"
+    docker compose -f infra/docker/docker-compose.test.yml --project-directory "$PROJECT_DIR" ps app
     exit 1
   fi
   
-  echo "  Attempt $RETRY_COUNT/$MAX_RETRIES - waiting for service..."
+  if [ $((RETRY_COUNT % 5)) -eq 0 ]; then
+    echo "  Attempt $RETRY_COUNT/$MAX_RETRIES - waiting for service..."
+    # Show recent logs every 5 attempts
+    echo "  Recent logs:"
+    docker compose -f infra/docker/docker-compose.test.yml --project-directory "$PROJECT_DIR" logs --tail=5 app
+  fi
+  
   sleep 2
 done
 

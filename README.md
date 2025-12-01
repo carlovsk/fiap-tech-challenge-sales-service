@@ -83,7 +83,7 @@ cp .env.example .env
 4. Start the development environment:
 
 ```bash
-docker-compose up -d
+docker-compose -f infra/docker/docker-compose.yml up -d
 ```
 
 5. Run database migrations:
@@ -103,7 +103,7 @@ npm run dev
 Or using Docker Compose:
 
 ```bash
-docker-compose up
+docker-compose -f infra/docker/docker-compose.yml up
 ```
 
 The server will be available at `http://localhost:3001`.
@@ -150,16 +150,16 @@ If you want to run the tests manually:
 
 ```bash
 # Start the test environment
-docker-compose -f docker-compose.test.yml up -d
+docker-compose -f infra/docker/docker-compose.test.yml up -d
 
 # Wait for services to be ready
-docker-compose -f docker-compose.test.yml exec app wget -q --spider http://localhost:3001/health
+docker-compose -f infra/docker/docker-compose.test.yml exec app wget -q --spider http://localhost:3001/health
 
 # Run k6 tests
 k6 run k6/integration-tests.js
 
 # Stop and clean up
-docker-compose -f docker-compose.test.yml down -v
+docker-compose -f infra/docker/docker-compose.test.yml down -v
 ```
 
 ## API Endpoints
@@ -257,12 +257,194 @@ docker-compose -f docker-compose.test.yml down -v
 | `DATABASE_URL` | PostgreSQL connection URL | - |
 | `NODE_ENV` | Environment (development, test, production) | development |
 
+## Kubernetes Deployment (Minikube)
+
+This service can be deployed to a local Minikube cluster.
+
+### Prerequisites
+
+- **Minikube** installed and running
+- **kubectl** configured to use Minikube
+- **Docker** (for building images)
+- **Management Service** deployed first (to get its URL)
+
+#### Installing Minikube
+
+**macOS (Homebrew):**
+```bash
+brew install minikube
+```
+
+**Linux:**
+```bash
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+```
+
+**Windows:**
+```bash
+# Using Chocolatey
+choco install minikube
+
+# Or download from: https://minikube.sigs.k8s.io/docs/start/
+```
+
+**Start Minikube:**
+```bash
+minikube start
+```
+
+**Verify installation:**
+```bash
+minikube status
+kubectl get nodes
+```
+
+**Note:** Make sure Minikube is running before using the `k8s:*` commands. If you see an error like "cluster does not exist", run `minikube start` first.
+
+### Building and Deploying
+
+**Before deploying:**
+
+1. **Get the Management Service URL:**
+
+If the management service is already deployed:
+
+```bash
+minikube service vehicle-management-service --url
+```
+
+2. **Update the ConfigMap:**
+
+Update `infra/k8s/configmap.yaml` with the management service URL. You can use either:
+- The Kubernetes service DNS name: `http://vehicle-management-service:80` (for internal communication)
+- The external URL from Minikube (if you need external access)
+
+**Quick Start (All-in-one):**
+
+```bash
+npm run k8s:start
+```
+
+This will build the Docker image, load it into Minikube, and deploy all Kubernetes resources.
+
+**Step-by-step:**
+
+1. **Build the Docker image:**
+
+```bash
+npm run k8s:build
+```
+
+Or manually:
+
+```bash
+docker build -f infra/docker/Dockerfile -t vehicle-sales-service:latest .
+```
+
+2. **Load the image into Minikube:**
+
+```bash
+npm run k8s:load
+```
+
+3. **Apply Kubernetes manifests:**
+
+```bash
+npm run k8s:deploy
+```
+
+This will create:
+- PostgreSQL StatefulSet with PersistentVolumeClaim
+- ConfigMap with application configuration
+- Secret with database credentials
+- Deployment for the sales service
+- LoadBalancer Service
+
+4. **Get the service URL:**
+
+```bash
+npm run k8s:url
+```
+
+**Accessing the Service from Postman/External Tools:**
+
+There are several ways to access the services:
+
+**Option 1: Using Minikube Service Tunnel (Recommended)**
+```bash
+minikube service vehicle-sales-service --url
+```
+This will output a URL like `http://127.0.0.1:XXXXX` that you can use directly in Postman.
+
+**Option 2: Using NodePort with Minikube IP**
+```bash
+# Get Minikube IP
+minikube ip
+
+# Access the service (replace <MINIKUBE_IP> with the actual IP)
+http://<MINIKUBE_IP>:<NODE_PORT>
+```
+
+To find the NodePort:
+```bash
+kubectl get service vehicle-sales-service -o jsonpath='{.spec.ports[0].nodePort}'
+```
+
+**Option 3: Using kubectl port-forward (Recommended for Postman)**
+```bash
+npm run k8s:port-forward
+```
+Or manually:
+```bash
+kubectl port-forward service/vehicle-sales-service 3001:80
+```
+Then access via: `http://localhost:3001`
+
+**Note:** Keep the port-forward command running in a terminal while using Postman. The connection will be active as long as the command is running.
+
+**Other useful commands:**
+
+- `npm run k8s:logs` - View application logs
+- `npm run k8s:status` - Check status of pods, services, and deployments
+- `npm run k8s:restart` - Restart the deployment
+- `npm run k8s:delete` - Delete all Kubernetes resources
+
+### Important Notes
+
+- **Management Service URL**: Make sure to update the `MANAGEMENT_SERVICE_URL` in `infra/k8s/configmap.yaml` before deploying. After deployment, you can update it and run `kubectl apply -f infra/k8s/configmap.yaml` followed by `kubectl rollout restart deployment/vehicle-sales-service`.
+
+- **Database Credentials**: Default credentials are in `infra/k8s/secret.yaml` (base64 encoded). Change them for production use.
+
+- **Service Discovery**: The management service URL in the ConfigMap uses Kubernetes service DNS (`http://vehicle-management-service:80`) by default. This works for internal communication within the cluster.
+
+### Updating Configuration
+
+To update the management service URL:
+
+1. Get the management service URL:
+```bash
+minikube service vehicle-management-service --url
+```
+
+2. Update `infra/k8s/configmap.yaml` with the URL
+3. Apply the updated ConfigMap:
+```bash
+kubectl apply -f infra/k8s/configmap.yaml
+```
+
+4. Restart the deployment to pick up changes:
+```bash
+kubectl rollout restart deployment/vehicle-sales-service
+```
+
 ## Scripts
 
 | Script | Description |
 |--------|-------------|
 | `npm run dev` | Start development server with hot reload |
 | `npm run build` | Build TypeScript to JavaScript |
+| `npm run docker:build` | Build Docker image for the service |
 | `npm test` | Run unit tests with coverage |
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run test:integration` | Run k6 integration tests |
@@ -272,4 +454,14 @@ docker-compose -f docker-compose.test.yml down -v
 | `npm run prisma:migrate` | Run Prisma migrations |
 | `npm run prisma:generate` | Generate Prisma client |
 | `npm run prisma:studio` | Open Prisma Studio |
+| `npm run k8s:build` | Build Docker image for Kubernetes |
+| `npm run k8s:load` | Load Docker image into Minikube |
+| `npm run k8s:deploy` | Deploy Kubernetes manifests |
+| `npm run k8s:start` | Build, load, and deploy to Kubernetes (all-in-one) |
+| `npm run k8s:url` | Get the service URL from Minikube |
+| `npm run k8s:port-forward` | Forward service port to localhost (use for Postman) |
+| `npm run k8s:logs` | View application logs |
+| `npm run k8s:status` | Check status of Kubernetes resources |
+| `npm run k8s:restart` | Restart the Kubernetes deployment |
+| `npm run k8s:delete` | Delete all Kubernetes resources |
 

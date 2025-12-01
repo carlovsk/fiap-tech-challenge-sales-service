@@ -28,7 +28,7 @@ jobs:
 
       - name: Start test environment
         run: |
-          docker compose -f docker-compose.test.yml up -d
+          docker compose -f infra/docker/docker-compose.test.yml --project-directory ${{ github.workspace }} up -d
           echo "Waiting for services to be ready..."
 
       - name: Wait for application to be healthy
@@ -37,7 +37,7 @@ jobs:
           RETRY_COUNT=0
           
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            if docker compose -f docker-compose.test.yml exec -T app wget -q --spider http://localhost:3001/health 2>/dev/null; then
+            if docker compose -f infra/docker/docker-compose.test.yml --project-directory ${{ github.workspace }} exec -T app wget -q --spider http://localhost:3001/health 2>/dev/null; then
               echo "✅ Application is healthy!"
               break
             fi
@@ -46,7 +46,7 @@ jobs:
             
             if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
               echo "❌ Application failed to become healthy"
-              docker compose -f docker-compose.test.yml logs app
+              docker compose -f infra/docker/docker-compose.test.yml --project-directory ${{ github.workspace }} logs app
               exit 1
             fi
             
@@ -112,7 +112,7 @@ jobs:
 
       - name: Stop test environment
         if: always()
-        run: docker compose -f docker-compose.test.yml down -v --remove-orphans
+        run: docker compose -f infra/docker/docker-compose.test.yml --project-directory ${{ github.workspace }} down -v --remove-orphans
 
       - name: Create or update PR comment
         if: always() && github.event_name == 'pull_request'
