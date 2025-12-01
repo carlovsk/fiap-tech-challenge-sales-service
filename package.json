@@ -19,7 +19,7 @@
     "prisma:generate": "npx prisma generate",
     "prisma:studio": "npx prisma studio",
     "docker:build": "docker build -f infra/docker/Dockerfile -t vehicle-sales-service:latest .",
-    "k8s:build": "npm run docker:build",
+    "k8s:build": "docker build --platform linux/amd64 -f infra/docker/Dockerfile -t vehicle-sales-service:latest .",
     "k8s:load": "minikube image load vehicle-sales-service:latest",
     "k8s:deploy": "kubectl apply -f infra/k8s/",
     "k8s:start": "npm run k8s:build && npm run k8s:load && npm run k8s:deploy",
@@ -28,7 +28,10 @@
     "k8s:logs": "kubectl logs -f deployment/vehicle-sales-service",
     "k8s:status": "kubectl get pods,svc,deployment -l app=vehicle-sales-service",
     "k8s:restart": "kubectl rollout restart deployment/vehicle-sales-service",
-    "k8s:delete": "kubectl delete -f infra/k8s/"
+    "k8s:delete": "kubectl delete -f infra/k8s/",
+    "k8s:clean": "kubectl delete deployment vehicle-sales-service --ignore-not-found=true && kubectl delete service vehicle-sales-service --ignore-not-found=true && kubectl delete configmap vehicle-sales-config --ignore-not-found=true && kubectl delete secret postgres-sales-secret --ignore-not-found=true && kubectl delete statefulset postgres-sales --ignore-not-found=true && kubectl delete service postgres-sales --ignore-not-found=true && kubectl delete pvc postgres-sales-pvc --ignore-not-found=true && docker rmi vehicle-sales-service:latest --force 2>/dev/null || true",
+    "k8s:clean:all": "npm run k8s:clean && kubectl delete all --all --ignore-not-found=true",
+    "k8s:rebuild": "npm run k8s:clean && npm run k8s:build && npm run k8s:load && npm run k8s:deploy"
   },
   "eslintConfig": {
     "extends": "./.eslintrc.cjs"

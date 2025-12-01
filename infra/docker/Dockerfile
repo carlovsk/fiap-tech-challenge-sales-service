@@ -5,6 +5,12 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Set environment variables for Prisma
+ENV PRISMA_SKIP_POSTINSTALL_GENERATE=1
+
+# Install build dependencies for Prisma (needed for Alpine)
+RUN apk add --no-cache openssl openssl-dev
+
 # Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
