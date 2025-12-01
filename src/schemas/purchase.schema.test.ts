@@ -27,6 +27,32 @@ describe('Purchase Schema', () => {
       }
     });
 
+    it('should accept salesDate field name (alternative to saleDate)', () => {
+      const purchaseWithSalesDate = {
+        vehicleId: '550e8400-e29b-41d4-a716-446655440000',
+        buyerCpf: '12345678901',
+        salesDate: '2024-01-15',
+      };
+      const result = purchaseSchema.safeParse(purchaseWithSalesDate);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.saleDate).toBeInstanceOf(Date);
+      }
+    });
+
+    it('should accept YYYY-MM-DD date format', () => {
+      const purchaseWithSimpleDate = {
+        vehicleId: '550e8400-e29b-41d4-a716-446655440000',
+        buyerCpf: '12345678901',
+        salesDate: '2025-12-01',
+      };
+      const result = purchaseSchema.safeParse(purchaseWithSimpleDate);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.saleDate).toBeInstanceOf(Date);
+      }
+    });
+
     it('should reject invalid vehicle ID format', () => {
       const invalidPurchase = { ...validPurchase, vehicleId: 'invalid-id' };
       const result = purchaseSchema.safeParse(invalidPurchase);
