@@ -6,6 +6,6 @@ export class HealthController {
 
   static healthCheck: RequestHandler = async (_req: Request, res: Response): Promise<void> => {
     HealthController.logger.info('Health check requested');
-    res.json({ healthy: true, service: 'video', timestamp: new Date().toISOString() });
+    res.json({ healthy: true, service: 'sales', timestamp: new Date().toISOString() });
   };
 }
