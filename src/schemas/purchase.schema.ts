@@ -7,7 +7,6 @@ export const purchaseSchema = z
     saleDate: z.coerce.date(),
   })
   .transform((data) => {
-    // Accept both saleDate and salesDate, normalize to saleDate
     return {
       vehicleId: data.vehicleId,
       buyerCpf: data.buyerCpf,
@@ -15,7 +14,7 @@ export const purchaseSchema = z
     };
   })
   .refine((data) => data.saleDate !== undefined, {
-    message: 'Either saleDate or salesDate must be provided',
+    message: 'saleDate must be provided',
     path: ['saleDate'],
   });
 

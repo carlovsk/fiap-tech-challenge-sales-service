@@ -36,7 +36,7 @@ describe('HealthController', () => {
     const responseData = mockJson.mock.calls[0][0];
 
     expect(responseData).toHaveProperty('healthy', true);
-    expect(responseData).toHaveProperty('service', 'video');
+    expect(responseData).toHaveProperty('service', 'sales');
     expect(responseData).toHaveProperty('timestamp');
     expect(typeof responseData.timestamp).toBe('string');
     expect(() => new Date(responseData.timestamp)).not.toThrow();
